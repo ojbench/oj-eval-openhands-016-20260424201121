@@ -3,12 +3,13 @@
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include <map>
 
 using namespace std;
 
 const int MAX_KEY_LEN = 64;
 const int BLOCK_SIZE = 4096;
-const int ORDER = 50; // B+ tree order
+const int ORDER = 80; // Increased B+ tree order for better performance
 
 struct KeyValue {
     char key[MAX_KEY_LEN + 1];
@@ -59,6 +60,8 @@ private:
     string filename;
     int rootPos;
     int freePos;
+    map<int, Node> cache; // Simple cache for recently accessed nodes
+    const int MAX_CACHE_SIZE = 100;
     
     int allocateNode() {
         int pos = freePos;
@@ -69,13 +72,23 @@ private:
     void writeNode(int pos, const Node& node) {
         file.seekp(pos);
         file.write((char*)&node, sizeof(Node));
-        file.flush();
+        cache[pos] = node;
+        if (cache.size() > MAX_CACHE_SIZE) {
+            cache.erase(cache.begin());
+        }
     }
     
     Node readNode(int pos) {
+        if (cache.find(pos) != cache.end()) {
+            return cache[pos];
+        }
         Node node;
         file.seekg(pos);
         file.read((char*)&node, sizeof(Node));
+        cache[pos] = node;
+        if (cache.size() > MAX_CACHE_SIZE) {
+            cache.erase(cache.begin());
+        }
         return node;
     }
     
@@ -140,6 +153,13 @@ private:
         int i = node.keyCount - 1;
         
         if (node.isLeaf) {
+            // Check if already exists
+            for (int j = 0; j < node.keyCount; j++) {
+                if (node.keys[j] == kv) {
+                    return; // Already exists, don't insert duplicate
+                }
+            }
+            
             while (i >= 0 && kv < node.keys[i]) {
                 node.keys[i + 1] = node.keys[i];
                 i--;
