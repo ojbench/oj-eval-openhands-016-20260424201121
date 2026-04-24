@@ -99,40 +99,66 @@ private:
         newChild.isLeaf = child.isLeaf;
         
         int mid = ORDER / 2;
-        newChild.keyCount = ORDER - mid;
-        
-        for (int i = 0; i < newChild.keyCount; i++) {
-            newChild.keys[i] = child.keys[mid + i];
-        }
         
         if (!child.isLeaf) {
-            for (int i = 0; i <= newChild.keyCount; i++) {
-                newChild.children[i] = child.children[mid + i];
+            // Internal node split: move middle key up to parent
+            newChild.keyCount = ORDER - mid - 1;
+            
+            for (int i = 0; i < newChild.keyCount; i++) {
+                newChild.keys[i] = child.keys[mid + 1 + i];
             }
+            
+            for (int i = 0; i <= newChild.keyCount; i++) {
+                newChild.children[i] = child.children[mid + 1 + i];
+            }
+            
+            child.keyCount = mid;
+            
+            int newChildPos = allocateNode();
+            
+            for (int i = parent.keyCount; i > childIndex; i--) {
+                parent.children[i + 1] = parent.children[i];
+            }
+            parent.children[childIndex + 1] = newChildPos;
+            
+            for (int i = parent.keyCount - 1; i >= childIndex; i--) {
+                parent.keys[i + 1] = parent.keys[i];
+            }
+            parent.keys[childIndex] = child.keys[mid];
+            parent.keyCount++;
+            
+            writeNode(childPos, child);
+            writeNode(newChildPos, newChild);
+            writeNode(parentPos, parent);
         } else {
+            // Leaf node split: copy first key of new child up to parent
+            newChild.keyCount = ORDER - mid;
+            
+            for (int i = 0; i < newChild.keyCount; i++) {
+                newChild.keys[i] = child.keys[mid + i];
+            }
+            
             newChild.next = child.next;
             child.next = freePos;
+            child.keyCount = mid;
+            
+            int newChildPos = allocateNode();
+            
+            for (int i = parent.keyCount; i > childIndex; i--) {
+                parent.children[i + 1] = parent.children[i];
+            }
+            parent.children[childIndex + 1] = newChildPos;
+            
+            for (int i = parent.keyCount - 1; i >= childIndex; i--) {
+                parent.keys[i + 1] = parent.keys[i];
+            }
+            parent.keys[childIndex] = newChild.keys[0];
+            parent.keyCount++;
+            
+            writeNode(childPos, child);
+            writeNode(newChildPos, newChild);
+            writeNode(parentPos, parent);
         }
-        
-        child.keyCount = mid;
-        
-        int newChildPos = allocateNode();
-        
-        for (int i = parent.keyCount; i > childIndex; i--) {
-            parent.children[i + 1] = parent.children[i];
-        }
-        parent.children[childIndex + 1] = newChildPos;
-        
-        for (int i = parent.keyCount - 1; i >= childIndex; i--) {
-            parent.keys[i + 1] = parent.keys[i];
-        }
-        // For leaf nodes, copy the first key of new child; for internal nodes, move up the middle key
-        parent.keys[childIndex] = newChild.keys[0];
-        parent.keyCount++;
-        
-        writeNode(childPos, child);
-        writeNode(newChildPos, newChild);
-        writeNode(parentPos, parent);
     }
     
     void insertNonFull(int pos, const KeyValue& kv) {
