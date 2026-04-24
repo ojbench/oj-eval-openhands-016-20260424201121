@@ -69,7 +69,6 @@ private:
     void writeNode(int pos, const Node& node) {
         file.seekp(pos);
         file.write((char*)&node, sizeof(Node));
-        file.flush();
     }
     
     Node readNode(int pos) {
