@@ -138,7 +138,6 @@ private:
     
     void insertNonFull(int pos, const KeyValue& kv) {
         Node node = readNode(pos);
-        int i = node.keyCount - 1;
         
         if (node.isLeaf) {
             // Check if already exists
@@ -148,6 +147,7 @@ private:
                 }
             }
             
+            int i = node.keyCount - 1;
             while (i >= 0 && kv < node.keys[i]) {
                 node.keys[i + 1] = node.keys[i];
                 i--;
@@ -156,10 +156,11 @@ private:
             node.keyCount++;
             writeNode(pos, node);
         } else {
-            while (i >= 0 && kv < node.keys[i]) {
-                i--;
+            // Navigate to child - compare only keys for internal nodes
+            int i = 0;
+            while (i < node.keyCount && strcmp(kv.key, node.keys[i].key) >= 0) {
+                i++;
             }
-            i++;
             
             int childPos = node.children[i];
             Node child = readNode(childPos);
@@ -167,7 +168,7 @@ private:
             if (child.keyCount == ORDER) {
                 splitChild(pos, i, childPos);
                 node = readNode(pos);
-                if (node.keys[i] < kv) {
+                if (strcmp(kv.key, node.keys[i].key) >= 0) {
                     i++;
                 }
             }
@@ -283,8 +284,9 @@ private:
                 writeNode(pos, node);
             }
         } else {
+            // Navigate to child - compare only keys for internal nodes
             int i = 0;
-            while (i < node.keyCount && kv < node.keys[i]) {
+            while (i < node.keyCount && strcmp(kv.key, node.keys[i].key) >= 0) {
                 i++;
             }
             deleteKey(node.children[i], kv);
